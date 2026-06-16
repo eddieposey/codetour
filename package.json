@@ -1,11 +1,11 @@
 {
   "name": "codetour",
-  "displayName": "CodeTour",
+  "displayName": "CodeTour (Fork)",
   "description": "VS Code extension that allows you to record and playback guided tours of codebases, directly within the editor",
-  "publisher": "vsls-contrib",
-  "version": "0.0.59",
+  "publisher": "eddieposey",
+  "version": "0.0.60",
   "author": {
-    "name": "Microsoft Corporation"
+    "name": "eddieposey"
   },
   "repository": {
     "type": "git",

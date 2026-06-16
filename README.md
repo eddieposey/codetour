@@ -1,5 +1,17 @@
 # CodeTour 🗺️
 
+> **🍴 This is a fork.** This is an unofficial fork of the original [microsoft/codetour](https://github.com/microsoft/codetour) extension, published to the [Open VSX registry](https://open-vsx.org/extension/eddieposey/codetour) so it can be installed in VS Code-compatible editors like [VSCodium](https://vscodium.com/). It exists to ship a fix for a tour-panel scrolling bug without waiting on the upstream repo. All credit for CodeTour goes to the original authors at Microsoft. See [What's fixed in this fork](#whats-fixed-in-this-fork) below.
+
+## What's fixed in this fork
+
+The tour step content is rendered using VS Code's Comments API (an inline comment-thread widget). On steps with long descriptions, that widget measured its scrollable height during the initial render — **before** the Markdown body finished laying out — leaving the content clipped. You could only scroll part of the way down before it stopped, and had to manually resize or nudge the panel before the rest of the content became scrollable.
+
+This fork works around the bug by forcing the widget to re-measure its layout after each step renders. When a step is shown, the extension re-assigns the thread's comments on a short, escalating schedule (50ms → 1.2s), which triggers VS Code to recompute the body height and unlock scrolling automatically — no manual resize required. The relayout safely no-ops if you navigate to another step before it fires.
+
+**Known limitations (still constrained by the Comments API):** the panel's default height is not adjustable/persistable, and scroll-chaining (the wheel "falling through" the panel into the file once you reach the bottom) can't be prevented. Both would require re-rendering the panel as a webview, which this fork does not do.
+
+---
+
 CodeTour is a Visual Studio Code extension, which allows you to record and play back guided walkthroughs of your codebases. It's like a table of contents, that can make it easier to onboard (or re-board!) to a new project/feature area, visualize bug reports, or understand the context of a code review/PR change. A "code tour" is simply a series of interactive steps, each of which are associated with a specific directory, or file/line, and include a description of the respective code. This allows developers to clone a repo, and then immediately start **learning it**, without needing to refer to a `CONTRIBUTING.md` file and/or rely on help from others. Tours can either be checked into a repo, to enable sharing with other contributors, or [exported](#exporting-tours) to a "tour file", which allows anyone to replay the same tour, without having to clone any code to do it!
 
 <img width="800px" src="https://user-images.githubusercontent.com/116461/76165260-c6c00500-6112-11ea-9cda-0a6cb9b72e8f.gif" />
