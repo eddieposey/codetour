@@ -426,34 +426,52 @@ async function renderCurrentStep() {
   }
 }
 
-// Nudges a comment thread so VS Code recomputes its widget layout after the
-// initial render settles. See the call site in renderCurrentStep for details.
+// Forces VS Code to recompute the comment widget's layout after a step renders,
+// so long step content is fully scrollable without the user manually resizing
+// the box. See the call site in renderCurrentStep for the underlying bug.
 //
-// The exact moment the Markdown body finishes laying out varies by content
-// length, image loading, and machine speed, so rather than betting on a single
-// delay we re-measure on an escalating schedule. Each nudge is cheap and
-// visually idempotent (same content), and the later ones catch slow layouts
-// that an early single nudge would miss.
-const RELAYOUT_DELAYS = [
-  50, 150, 350, 700, 1200, 1800, 2500, 3500, 5000
-];
+// Re-assigning `thread.comments` does NOT work: the renderer diffs comments by
+// id + body, and we'd be handing back the same comment, so the update is a
+// no-op and no relayout happens. Toggling `collapsibleState` (collapse, then
+// re-expand a tick later) is the trigger VS Code can't diff away — it tears the
+// widget down and rebuilds it at the correct height, which is the programmatic
+// equivalent of the user nudging/resizing the box by hand. By the time it
+// re-expands, VS Code has already rendered the Markdown body once, so the
+// rebuild measures the now-known height correctly.
+//
+// We fire a couple of times early (before the user is likely to have started
+// reading) to cover both fast and slightly slower renders.
+const RELAYOUT_DELAYS = [200, 700];
 
 function relayoutThread(thread: CommentThread) {
+  const isStale = () => store.activeTour?.thread !== thread;
+
   for (const delay of RELAYOUT_DELAYS) {
     setTimeout(() => {
       // Bail if the user already navigated to another step (or ended the tour),
       // which disposes this thread and renders a fresh one.
-      if (store.activeTour?.thread !== thread) {
+      if (isStale()) {
         return;
       }
 
       try {
-        // Re-assigning with a new array reference triggers a thread update,
-        // which makes VS Code re-measure the body height and unlock scrolling.
-        thread.comments = [...thread.comments];
+        thread.collapsibleState = CommentThreadCollapsibleState.Collapsed;
       } catch {
         // The thread was disposed before the relayout fired; nothing to do.
+        return;
       }
+
+      setTimeout(() => {
+        if (isStale()) {
+          return;
+        }
+
+        try {
+          thread.collapsibleState = CommentThreadCollapsibleState.Expanded;
+        } catch {
+          // Disposed between the collapse and the re-expand; nothing to do.
+        }
+      }, 50);
     }, delay);
   }
 }
