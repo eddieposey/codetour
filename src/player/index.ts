@@ -379,6 +379,15 @@ async function renderCurrentStep() {
 
   await showDocument(uri, range, selection);
 
+  // Work around a VS Code layout bug: the comment widget measures its
+  // scrollable body height during the initial render, before the Markdown
+  // content has finished laying out. This leaves long step content clipped
+  // and only partially scrollable until the widget is manually resized.
+  // Re-assigning the thread's comments shortly after it renders forces VS Code
+  // to recompute the layout — the same effect as a manual nudge — so the full
+  // content becomes scrollable without the user having to resize the box.
+  relayoutThread(store.activeTour!.thread!);
+
   if (step.directory) {
     const directoryUri = getFileUri(step.directory, workspaceRoot);
     commands.executeCommand("revealInExplorer", directoryUri);
@@ -414,6 +423,36 @@ async function renderCurrentStep() {
         window.showErrorMessage(`An error has occurred: ${e}`);
       }
     }
+  }
+}
+
+// Nudges a comment thread so VS Code recomputes its widget layout after the
+// initial render settles. See the call site in renderCurrentStep for details.
+//
+// The exact moment the Markdown body finishes laying out varies by content
+// length, image loading, and machine speed, so rather than betting on a single
+// delay we re-measure on an escalating schedule. Each nudge is cheap and
+// visually idempotent (same content), and the later ones catch slow layouts
+// that an early single nudge would miss.
+const RELAYOUT_DELAYS = [50, 150, 350, 700, 1200];
+
+function relayoutThread(thread: CommentThread) {
+  for (const delay of RELAYOUT_DELAYS) {
+    setTimeout(() => {
+      // Bail if the user already navigated to another step (or ended the tour),
+      // which disposes this thread and renders a fresh one.
+      if (store.activeTour?.thread !== thread) {
+        return;
+      }
+
+      try {
+        // Re-assigning with a new array reference triggers a thread update,
+        // which makes VS Code re-measure the body height and unlock scrolling.
+        thread.comments = [...thread.comments];
+      } catch {
+        // The thread was disposed before the relayout fired; nothing to do.
+      }
+    }, delay);
   }
 }
 
