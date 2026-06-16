@@ -434,7 +434,9 @@ async function renderCurrentStep() {
 // delay we re-measure on an escalating schedule. Each nudge is cheap and
 // visually idempotent (same content), and the later ones catch slow layouts
 // that an early single nudge would miss.
-const RELAYOUT_DELAYS = [50, 150, 350, 700, 1200];
+const RELAYOUT_DELAYS = [
+  50, 150, 350, 700, 1200, 1800, 2500, 3500, 5000
+];
 
 function relayoutThread(thread: CommentThread) {
   for (const delay of RELAYOUT_DELAYS) {

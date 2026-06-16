@@ -3,7 +3,7 @@
   "displayName": "CodeTour (Fork)",
   "description": "VS Code extension that allows you to record and playback guided tours of codebases, directly within the editor",
   "publisher": "eddieposey",
-  "version": "0.0.60",
+  "version": "0.0.61",
   "author": {
     "name": "eddieposey"
   },
